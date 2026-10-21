@@ -9,22 +9,24 @@ export interface GitHubRepo {
   topics: string[];
 }
 
-type GitHubApiRepo = GitHubRepo;
-
 export async function getGitHubProjects(): Promise<GitHubRepo[]> {
   try {
-    // Replace 'KimeraYvonne' or your exact GitHub username if different
+    // Use your exact GitHub handle here (matching your build logs: kimera-yvonne2)
     const username = "kimera-yvonne2"; 
+    
     const res = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=6`, {
-      next: { revalidate: 3600 }, // Cache for 1 hour
+      next: { revalidate: 3600 },
     });
 
     if (!res.ok) {
-      throw new Error("Failed to fetch repositories");
+      console.warn(`GitHub API returned status ${res.status}. Falling back to empty array.`);
+      return [];
     }
 
-    const repos: GitHubApiRepo[] = await res.json();
-    return repos.map((repo) => ({
+    const repos = await res.json();
+    if (!Array.isArray(repos)) return [];
+
+    return repos.map((repo: any) => ({
       id: repo.id,
       name: repo.name,
       description: repo.description,
@@ -35,7 +37,8 @@ export async function getGitHubProjects(): Promise<GitHubRepo[]> {
       topics: repo.topics || [],
     }));
   } catch (error) {
-    console.error("Error fetching GitHub repos:", error);
+    // Catch network or parse errors gracefully so the build NEVER crashes
+    console.error("Error fetching GitHub repos during build:", error);
     return [];
   }
 }
